@@ -1,0 +1,30 @@
+/* Customize your main colors in :root variables */
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  --main-background-color: #343A50;
+  --card-background-color: #804980;
+  --countdown-background-color: #433765;
+  --main-text-color: #F7F6F4;
+  --title-text-color: #3CBA8B;
+}
+
+@font-face {
+  font-family: monument;
+  src: url("./assets/fonts/MonumentExtended-Regular.otf") format("opentype");
+}
+
+body {
+  background-color: black;
+  /* background: url("img/main_back.jpg"); */
+  /* background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('img/main_back.jpg'); */
+  background-size: cover;
+  font-family: monument;
+  font-size: 1.1em;
+}
+
+button {
+  cursor: pointer;
+}
