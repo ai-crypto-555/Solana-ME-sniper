@@ -1,39 +1,34 @@
 import React, { useEffect, useMemo, useState } from "react";
-import Header from "./Header";
-import NFT from "./components/NFT";
 import { useAnchorWallet, useConnection, useWallet } from "@solana/wallet-adapter-react";
 import * as anchor from "@project-serum/anchor";
 import axios from 'axios';
 
-import Asset from './assets';
 import '../scss/Main.scss';
 import { Keypair, LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
 import { getParsedNftAccountsByOwner } from "@nfteyez/sol-rayz";
 import { Token, TOKEN_PROGRAM_ID } from "@solana/spl-token"
-import jsonList from '../pair.json';
-import { Snackbar } from "@material-ui/core";
-import Alert from "@material-ui/lab/Alert";
-import { AlertState } from "../utils";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
+
+import Asset from './assets';
 
 /**
- *  CONSTANTS...
+ * 
+ *  constants...
  */
-const COLLECTION_NAME = "WOB";
-// const BASEURL = 'http://localhost:3005';
-const BASEURL = 'https://solanadomains.org';
-const WOBTOKEN = 'AKuKwFseZVMbjGdbrFTXiHMTvRFNjyXdJPiDDQzoycMK';
-const RECEIVER = 'AwHbhRMgr7JH63EbnXgWJjTpuZJ5QkCNRTk1uM8pDNNT';
-const SEND_AMOUNT = 1000;
-const DECIMALS = 10 ** 9;
 
+const baseUrl = `https://api-mainnet.magiceden.dev/v2`;
+
+const endpoint = process.env.REACT_APP_ENDPOINT!;
+const magicEdenAddr = process.env.REACT_APP_ME_ADDRESS!;
+const apiKey = process.env.REACT_APP_APIKEY!;
 
 export default function Main() {
 
     const wallet = useWallet();
-    const wallet1 = useAnchorWallet();
     const connection = new anchor.web3.Connection(
-        'https://metaplex.devnet.rpcpool.com'
+        `https://ssc-dao.genesysgo.net/`
     )
+    const [balance, setBalance] = useState(0.0);
     const anchorWallet = useMemo(() => {
         if (
             !wallet ||
@@ -49,264 +44,208 @@ export default function Main() {
             signTransaction: wallet.signTransaction,
         } as anchor.Wallet;
     }, [wallet])
-    const [wobBalance, setWobBalance] = useState<any>(1000);
-    const [solBalance, setSolBalance] = useState<any>(0.1);
-    const [addrList, setAddrList] = useState<any[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [curNumber, setCurNumber] = useState(-1);
-    const [curNft, setCurNft] = useState<any>(null);
+    const magicEdenPubKey = new PublicKey(magicEdenAddr);
+    const [trackData, setTrackData] = useState<any[]>([]);
+    const [isPlay, setPlay] = useState<any>(true);
 
-    const [alertState, setAlertState] = useState<AlertState>({
-        open: false,
-        message: "",
-        severity: undefined,
-    });
+    // const buyTest = async () => {
+    //     await axios.get()
+    // }
 
-    const [nftList, setNftList] = useState<any[]>([]);
+    const getTrackData = async () => {
 
-    const buyOnME = () => {
-        window.open('https://magiceden.io/', '_blank');
-    }
+        let transactions = await connection.getConfirmedSignaturesForAddress2(magicEdenPubKey);
 
-    const reRoll = async () => {
-        return await axios.post(
-            `${BASEURL}/get_number`,
-            {
-                number: curNumber,
-                address: curNft.mint
-            }
-        );
-    }
+        let signatureList: any[] = [];
 
-    const handleClickWob = async () => {
-        if (!anchorWallet?.publicKey) {
-            setAlertState({
-                ...alertState,
-                open: true,
-                message: "Wallet Connect First!",
-                severity: "info",
-            })
-            return;
-        }
-        if (!curNft) {
-            setAlertState({
-                ...alertState,
-                open: true,
-                message: "Please select Nft!",
-                severity: "error",
-            })
-            return;
+        // last 15 transactions are enough for us..
+        for (let i = 0; i < 15; i++) {
+            signatureList.push(transactions[i].signature);
         }
 
-        let signer = new Keypair();
-        let token = new Token(
-            connection,
-            new PublicKey(WOBTOKEN),
-            TOKEN_PROGRAM_ID,
-            signer
-        );
-        let tokenAccount = await token.getOrCreateAssociatedAccountInfo(
-            anchorWallet.publicKey
-        );
-        const associatedDestinationTokenAddr = await Token.getAssociatedTokenAddress(
-            token.associatedProgramId,
-            token.programId,
-            new PublicKey(WOBTOKEN),
-            new PublicKey(RECEIVER)
-        )
-        let instructions = [];
-        let result = await connection.getAccountInfo(associatedDestinationTokenAddr);
-        if (result == null) {
-            instructions.push(
-                Token.createAssociatedTokenAccountInstruction(
-                    token.associatedProgramId,
-                    token.programId,
-                    new PublicKey(WOBTOKEN),
-                    associatedDestinationTokenAddr,
-                    new PublicKey(RECEIVER),
-                    anchorWallet.publicKey
-                )
-            );
-        }
-        instructions.push(
-            Token.createTransferInstruction(
-                TOKEN_PROGRAM_ID,
-                tokenAccount.address,
-                associatedDestinationTokenAddr,
-                anchorWallet.publicKey,
-                [],
-                SEND_AMOUNT * DECIMALS
-            )
-        );
+        //parse transaction data...
+        let signList = await connection.getParsedConfirmedTransactions(signatureList);
 
-        try {
-            var transferTrx = new Transaction().add(
-                ...instructions
-            )
-            var signature = await wallet.sendTransaction(
-                transferTrx,
-                connection
-            )
+        let listedTokenList: any[] = [];
+        let collectionList: any[] = [];
 
-            const response = await connection.confirmTransaction(signature, 'processed');
+        signList.forEach((item: any, idx) => {
+            if (item != null) {
+                let actionType = item.meta.logMessages[1].split(":")[2];
 
-            setLoading(true);
-            let result = await reRoll();
-            setLoading(false);
-            console.log(`result::`, result);
-            setTimeout(() => {
-                document.location.reload();
-            }, 10000)
-        } catch (err) {
-
-        }
-    }
-
-    const handleClickSol = async () => {
-
-        if (!wallet?.publicKey) {
-            setAlertState({
-                ...alertState,
-                open: true,
-                message: "Wallet Connect First!",
-                severity: "info",
-            })
-            return;
-        }
-        if (!curNft) {
-            setAlertState({
-                ...alertState,
-                open: true,
-                message: "Please select Nft!",
-                severity: "error",
-            })
-            return;
-        }
-
-        var transaction = new Transaction().add(SystemProgram.transfer({
-            fromPubkey: wallet.publicKey,
-            toPubkey: new PublicKey(RECEIVER),
-            lamports: LAMPORTS_PER_SOL * 0.2
-        }))
-        transaction.feePayer = wallet.publicKey;
-        let blockhashObj = await connection.getRecentBlockhash();
-        transaction.recentBlockhash = await blockhashObj.blockhash;
-        var signature = await wallet.sendTransaction(
-            transaction,
-            connection
-        )
-        const response = await connection.confirmTransaction(signature, 'processed');
-        setLoading(true);
-        let result = await reRoll();
-        setLoading(false);
-        setTimeout(() => {
-            document.location.reload();
-        }, 10000)
-        console.log(`result::`, result);
-    }
-
-    const handleSelect = (item: any) => {
-        let uri = item.data.uri;
-        let flag = -1;
-        jsonList.forEach((ele, idx) => {
-            if (ele == uri) {
-                flag = idx;
+                //fetch only list transactions...
+                if (actionType.includes(' Sell')) {
+                    let tokenMint = item.meta.postTokenBalances[0].mint;
+                    listedTokenList.push(tokenMint);
+                }
             }
         })
-        setCurNumber(flag);
-        setCurNft(item);
-    }
 
+        let tokenInfoList: any[] = [];
+        let tokenListInfoList: any[] = [];
+        let collectionInfoList: any[] = [];
+
+        tokenInfoList = await Promise.all(
+            listedTokenList.map((tokenMint) =>
+                axios.get(
+                    `https://api-mainnet.magiceden.dev/v2/tokens/${tokenMint}`
+                )
+            )
+        );
+
+        tokenListInfoList = await Promise.all(
+            listedTokenList.map((tokenMint) =>
+                axios.get(
+                    `https://api-mainnet.magiceden.dev/v2/tokens/${tokenMint}/listings`
+                )
+            )
+        );
+
+        tokenInfoList.forEach((tokenInfo: any) => {
+            collectionList.push(tokenInfo.data.collection)
+        });
+
+        collectionInfoList = await Promise.all(
+            collectionList.map((collection) =>
+                axios.get(`https://api-mainnet.magiceden.dev/v2/collections/${collection}/stats`)
+            )
+        );
+
+        let trackInfoList: any[] = [];
+
+        for (let i = 0; i < tokenInfoList.length; i++) {
+            if (tokenInfoList[i].data != null && tokenListInfoList[i].data.length > 0) {
+                trackInfoList.push({
+                    tokenMint: tokenInfoList[i].data.mintAddress,
+                    tokenAccount: tokenListInfoList[i].data[0].tokenAddress,
+                    name: tokenInfoList[i].data.name,
+                    image: tokenInfoList[i].data.image,
+                    collection: tokenInfoList[i].data.collection,
+                    auctionHouse: tokenListInfoList[i].data[0].auctionHouse,
+                    pdaAddress: tokenListInfoList[i].data[0].pdaAddress,
+                    expiry: tokenListInfoList[i].data[0].expiry,
+                    price: tokenListInfoList[i].data[0].price,
+                    seller: tokenListInfoList[i].data[0].seller,
+                    sellerReferral: tokenListInfoList[i].data[0].sellerReferral,
+                    floorPrice: collectionInfoList[i].data.floorPrice,
+                    listedCount: collectionInfoList[i].data.listedCount,
+                })
+            }
+
+        }
+
+        console.log(`track:`, trackInfoList);
+
+        if (trackData.length == 0) {
+            setTrackData(trackInfoList);
+        } else {
+            setTrackData([
+                ...trackData,
+                ...trackInfoList
+            ]);
+        }
+        if (isPlay) {
+            setTimeout(async () => {
+                await getTrackData();
+            }, 1000)
+        }
+    }
 
     useEffect(() => {
 
-        /**
-         * mock datas..
-         */
-        setAddrList([
-            'AWHb...DNNT',
-            'AWHb...DNNT',
-            'AWHb...DNNT',
-            'AWHb...DNNT',
-            'AWHb...DNNT',
-            'AWHb...DNNT',
-            'AWHb...DNNT',
-        ]);
-
-        // setNftList([
-        //     1, 2, 3, 4
-        // ])
-
-        setNftList([
-
-        ]);
-
         (async () => {
             if (anchorWallet) {
-                const balance = await connection.getBalance(anchorWallet.publicKey);
-                setSolBalance(balance / LAMPORTS_PER_SOL);
-                const pubkey = anchorWallet.publicKey.toString();
-                const tokenList = await getParsedNftAccountsByOwner({
-                    publicAddress: pubkey,
-                    connection: connection
-                });
 
-                let signer = new Keypair();
-                let wob_tokenPublicKey = new PublicKey(WOBTOKEN);
-                let wob_token = new Token(
-                    connection,
-                    wob_tokenPublicKey,
-                    TOKEN_PROGRAM_ID,
-                    signer
-                );
+                let balanace = await connection.getBalance(wallet.publicKey!);
+                console.log(`balance::`, balanace);
 
-                try {
-                    let wob_tokenAccount = await wob_token.getOrCreateAssociatedAccountInfo(
-                        anchorWallet.publicKey
-                    );
-                    const myWalletMyTokenBalance = await connection.getTokenAccountBalance(
-                        wob_tokenAccount.address
-                    );
-                    let wobAmount = myWalletMyTokenBalance.value.uiAmount;
-                    setWobBalance(wobAmount);
-                } catch (err) {
-                    setWobBalance(0);
-                }
+                await getTrackData();
 
-                /**
-                 *  filtering WOB -> DEGEN nfts
-                 */
-                let nft_list: any[] = [];
-                let imageList: any[] = [];
-                let imageListRes: any[] = [];
+                // setInterval(async () => {
+                //     // get 1000 transactions...
+                //     let transactions = await connection.getConfirmedSignaturesForAddress2(magicEdenPubKey);
 
-                console.log(`nfts::`, tokenList);
+                //     let signatureList: any[] = [];
 
-                tokenList.forEach((item, idx) => {
-                    if (item.data.symbol == COLLECTION_NAME && item.data.name.includes("DEGENWOB")) {
-                        // imageList.push(axios.post(item.data.uri))
-                        nft_list.push(item);
-                    }
-                })
+                //     // last 15 transactions are enough for us..
+                //     for (let i = 0; i < 15; i++) {
+                //         signatureList.push(transactions[i].signature);
+                //     }
 
-                /**
-                 * add image uri to nft info
-                 */
+                //     //parse transaction data...
+                //     let signList = await connection.getParsedConfirmedTransactions(signatureList);
 
-                nft_list.forEach((item: any) => {
-                    imageList.push(axios.post(item.data.uri))
-                })
+                //     let listedTokenList: any[] = [];
+                //     let collectionList: any[] = [];
 
-                imageListRes = await Promise.all(imageList);
+                //     signList.forEach((item: any, idx) => {
+                //         console.log(`item:::`, item);
+                //         let actionType = item.meta.logMessages[1].split(":")[2];
 
-                let nft_list1: any[] = [];
-                nft_list.forEach((item, idx) => {
-                    let item1 = { ...item, imageUri: imageListRes[idx].data.image }
-                    nft_list1.push(item1);
-                })
+                //         //fetch only list transactions...
+                //         if (actionType.includes(' Sell')) {
+                //             let tokenMint = item.meta.postTokenBalances[0].mint;
+                //             listedTokenList.push(tokenMint);
+                //         }
+                //     })
 
-                setNftList(nft_list1);
-                console.log(`nft list::`, nft_list1);
+                //     let tokenInfoList: any[] = [];
+                //     let tokenListInfoList: any[] = [];
+                //     let collectionInfoList: any[] = [];
+
+                //     tokenInfoList = await Promise.all(
+                //         listedTokenList.map((tokenMint) =>
+                //             axios.get(
+                //                 `https://api-mainnet.magiceden.dev/v2/tokens/${tokenMint}`
+                //             )
+                //         )
+                //     );
+
+                //     tokenListInfoList = await Promise.all(
+                //         listedTokenList.map((tokenMint) =>
+                //             axios.get(
+                //                 `https://api-mainnet.magiceden.dev/v2/tokens/${tokenMint}/listings`
+                //             )
+                //         )
+                //     );
+
+                //     tokenInfoList.forEach((tokenInfo: any) => {
+                //         collectionList.push(tokenInfo.data.collection)
+                //     });
+
+                //     collectionInfoList = await Promise.all(
+                //         collectionList.map((collection) =>
+                //             axios.get(`https://api-mainnet.magiceden.dev/v2/collections/${collection}/stats`)
+                //         )
+                //     );
+
+                //     let trackInfoList: any[] = [];
+
+                //     for (let i = 0; i < tokenInfoList.length; i++) {
+                //         if (tokenInfoList[i].data != null && tokenListInfoList[i].data.length > 0) {
+                //             trackInfoList.push({
+                //                 tokenMint: tokenInfoList[i].data.mintAddress,
+                //                 tokenAccount: tokenListInfoList[i].data[0].tokenAddress,
+                //                 name: tokenInfoList[i].data.name,
+                //                 image: tokenInfoList[i].data.image,
+                //                 collection: tokenInfoList[i].data.collection,
+                //                 auctionHouse: tokenListInfoList[i].data[0].auctionHouse,
+                //                 pdaAddress: tokenListInfoList[i].data[0].pdaAddress,
+                //                 expiry: tokenListInfoList[i].data[0].expiry,
+                //                 price: tokenListInfoList[i].data[0].price,
+                //                 seller: tokenListInfoList[i].data[0].seller,
+                //                 sellerReferral: tokenListInfoList[i].data[0].sellerReferral,
+                //                 floorPrice: collectionInfoList[i].data.floorPrice,
+                //                 listedCount: collectionInfoList[i].data.listedCount,
+                //             })
+                //         }
+
+                //     }
+
+                //     console.log(`${count}::`, trackInfoList);
+                //     setTrackInfoList(trackInfoList);
+                //     count++;
+                // }, 5000);
             }
         })()
 
@@ -314,99 +253,12 @@ export default function Main() {
 
     return (
         <>
-            {
-                loading &&
-                <div id="loading">
-                    <video autoPlay muted loop>
-                        <source src={Asset.loading_video} type="video/mp4" />
-                    </video>
-                    <span>RE-ROLLING...</span>
+            <div className="row j-end p-2">
+                <div className="row cg-2">
+                    <img src={Asset.solana}></img>
+                    <span>{balance}SOL</span>
                 </div>
-            }
-            <Header />
-            <div className={loading ? "main mobile_disable" : "main"}>
-                <div className="container">
-                    <div className="row between">
-                        <img src={Asset.speaker}></img>
-                        <div className="row cg-1">
-                            <img src={Asset.token} style={{ width: '40px' }}></img>
-                            <div className="col rg-1">
-                                <span>{wobBalance} $WOB</span>
-                                <span>{solBalance} SOL</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="main-part">
-                        <div className="left">
-                            <span className="f-28">Roll the Wobblebot to unlock a new degen</span>
-                            <div className="panel">
-                                <img src={Asset.logo_white}></img>
-                                <div className="col f-center rg-3">
-                                    <span className="f-24">FIND THE PERFECT DEGEN WOB PFP</span>
-                                    <span className="f-14">our highest rollers are on the leaderboard.. how degen are you?</span>
-                                    {
-                                        nftList.length == 0 ?
-                                            <div className="void"></div> :
-                                            <>
-                                                <div className="row wrap cg-2 rg-2 f-center">
-                                                    {
-                                                        nftList.map((item, idx) => (
-                                                            <NFT img={item.imageUri} key={idx} myclick={() => handleSelect(item)}></NFT>
-                                                        ))
-                                                    }
-
-                                                </div>
-                                                <span className="f-14">You have selected Degen Wob #100</span>
-                                            </>
-                                    }
-                                </div>
-                                {
-                                    nftList.length == 0 ?
-                                        <div className="col rg-2 f-center">
-                                            <span className="f-24">You need a degen wob to roll the wobblebot</span>
-                                            <span className="row wrap cg-5 rg-2 f-center">
-                                                <button className="btn" onClick={buyOnME}>Buy on M.E</button>
-                                                <button className="btn">Transformer</button>
-                                            </span>
-                                        </div> :
-                                        <div className="col rg-2 f-center">
-                                            <span className="f-24">ROLL THE WOBBLEBOT</span>
-                                            <span className="row wrap cg-5 rg-2 f-center">
-                                                <button className="btn" onClick={handleClickWob}>1000 $WOB</button>
-                                                <button className="btn" onClick={handleClickSol}>0.1 SOL</button>
-                                            </span>
-                                        </div>
-                                }
-                                <span className="f-14">MUST HAVE A BALANCE OF 1000 $WOB OR 0.1 SOL TO ROLL THE WOBBLEBOT</span>
-                            </div>
-                        </div>
-                        <div className="right">
-                            <span style={{ fontSize: '16px' }}>Top degen Leaderboards</span>
-                            {addrList.map((item, key) => (
-                                <div className="row cg-1">
-                                    <img src={Asset.logo_red}></img>
-                                    <div className="row wrap">
-                                        <span>{key}.</span>
-                                        <span>{item}</span>
-                                        <span>20 ROLLS</span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-                <Snackbar
-                    open={alertState.open}
-                    autoHideDuration={6000}
-                    onClose={() => setAlertState({ ...alertState, open: false })}
-                >
-                    <Alert
-                        onClose={() => setAlertState({ ...alertState, open: false })}
-                        severity={alertState.severity}
-                    >
-                        {alertState.message}
-                    </Alert>
-                </Snackbar>
+                <WalletMultiButton />
             </div>
         </>
     );

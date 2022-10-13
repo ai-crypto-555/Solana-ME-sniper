@@ -119,6 +119,14 @@
     justify-content: space-between;
 }
 
+.j-start {
+    justify-content: flex-start;
+}
+
+.j-end {
+    justify-content: flex-end;
+}
+
 .col {
     display: flex;
     flex-direction: column;
