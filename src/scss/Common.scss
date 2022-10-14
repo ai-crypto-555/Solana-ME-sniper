@@ -127,6 +127,22 @@
     justify-content: flex-end;
 }
 
+.j-center {
+    justify-content: center;
+}
+
+.t-left {
+    text-align: left;
+}
+
+.t-right {
+    text-align: right;
+}
+
+.t-center {
+    text-align: center;
+}
+
 .col {
     display: flex;
     flex-direction: column;

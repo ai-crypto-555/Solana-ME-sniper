@@ -4,6 +4,7 @@ import ME_logo from '../../img/magiceden.svg';
 import sniper from '../../img/sniper.svg';
 import nft_item from '../../img/nft-item.svg';
 import studio from '../../img/Studio9.svg';
+import pause from '../../img/pause.svg';
 
 export default {
     solana,
@@ -11,5 +12,6 @@ export default {
     ME_logo,
     sniper,
     nft_item,
-    studio
+    studio,
+    pause
 }

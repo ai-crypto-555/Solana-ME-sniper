@@ -17,3 +17,34 @@
     }
 
 }
+
+.track {
+    display: flex;
+    flex-direction: column;
+
+    .track-btn {
+        background-color: #1B1B1B;
+        border: 0px solid white;
+        border-radius: 12px;
+        font-size: 20px;
+        display: flex;
+        flex-direction: row;
+        column-gap: 10px;
+        color: white;
+        padding: 15px 20px;
+        align-items: center;
+        font-family: hvd_comic;
+
+        .on {
+            border-radius: 50%;
+            width: 10px;
+            height: 10px;
+            background-color: #00FC19;
+            border: 0px solid white;
+        }
+    }
+
+    .buy-btn {}
+
+    .filter-btn {}
+}
