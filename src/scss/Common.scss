@@ -112,7 +112,7 @@
 .row {
     display: flex;
     flex-direction: row;
-    align-items: center;
+    // align-items: center;
 }
 
 .between {
@@ -129,6 +129,18 @@
 
 .j-center {
     justify-content: center;
+}
+
+.a-center {
+    align-items: center;
+}
+
+.a-start {
+    align-items: flex-start;
+}
+
+.a-end {
+    align-items: flex-end;
 }
 
 .t-left {
@@ -1185,6 +1197,22 @@
     flex: 1;
 }
 
+.flex2 {
+    flex: 2;
+}
+
+.flex3 {
+    flex: 3;
+}
+
+.flex4 {
+    flex: 4;
+}
+
+.flex5 {
+    flex: 5;
+}
+
 .white {
     color: white;
 }
@@ -1199,4 +1227,27 @@
 
 .dark-blue {
     color: #7688C9;
+}
+
+.scroll {
+    overflow: auto;
+
+    &::-webkit-scrollbar {
+        position: absolute;
+        width: 5px;
+        height: 5px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: #ddd;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: #aaa;
+        border-radius: 5px;
+    }
+
+    &::-webkit-scrollbar-thumb:hover {
+        background: #888;
+    }
 }

@@ -51,8 +51,8 @@ export default function Welcome() {
 
     return (
         <>
-            <div className="row j-end p-2">
-                <div className="row cg-2">
+            <div className="row j-end p-2 a-center">
+                <div className="row cg-2 a-center">
                     <img src={Asset.solana}></img>
                     <span>{balance}SOL</span>
                 </div>
