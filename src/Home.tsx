@@ -174,6 +174,7 @@ const Home = (props: HomeProps) => {
 
   return (
     <main>
+      <></>
     </main>
   );
 };
